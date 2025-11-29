@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 import protocol
 import config
-
+import random
 
 class RealtimeDialogClient:
     def __init__(self, config: Dict[str, Any], session_id: str, output_audio_format: str = "pcm") -> None:
