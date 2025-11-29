@@ -6,7 +6,6 @@ from typing import Dict, Any
 
 import protocol
 import config
-import random
 
 
 class RealtimeDialogClient:
@@ -22,7 +21,6 @@ class RealtimeDialogClient:
         print(f"url: {self.config['base_url']}, headers: {self.config['headers']}")
         self.ws = await websockets.connect(
             self.config['base_url'],
-            # extra_headers=self.config['headers'],
             additional_headers=self.config['headers'],
             ping_interval=None
         )
@@ -75,6 +73,21 @@ class RealtimeDialogClient:
         hello_request.extend(payload_bytes)
         await self.ws.send(hello_request)
 
+    async def chat_text_query(self, content: str) -> None:
+        """发送Chat Text Query消息"""
+        payload = {
+            "content": content,
+        }
+        chat_text_query_request = bytearray(protocol.generate_header())
+        chat_text_query_request.extend(int(501).to_bytes(4, 'big'))
+        payload_bytes = str.encode(json.dumps(payload))
+        payload_bytes = gzip.compress(payload_bytes)
+        chat_text_query_request.extend((len(self.session_id)).to_bytes(4, 'big'))
+        chat_text_query_request.extend(str.encode(self.session_id))
+        chat_text_query_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
+        chat_text_query_request.extend(payload_bytes)
+        await self.ws.send(chat_text_query_request)
+
     async def chat_tts_text(self, is_user_querying: bool, start: bool, end: bool, content: str) -> None:
         if is_user_querying:
             return
@@ -107,6 +120,25 @@ class RealtimeDialogClient:
         task_request.extend((len(payload_bytes)).to_bytes(4, 'big'))  # payload size(4 bytes)
         task_request.extend(payload_bytes)
         await self.ws.send(task_request)
+
+    async def chat_rag_text(self, is_user_querying: bool, external_rag: str) -> None:
+        if is_user_querying:
+            return
+        """发送Chat TTS Text消息"""
+        payload = {
+            "external_rag": external_rag,
+        }
+        print(f"ChatRAGTextRequest payload: {payload}")
+        payload_bytes = str.encode(json.dumps(payload))
+        payload_bytes = gzip.compress(payload_bytes)
+
+        chat_rag_text_request = bytearray(protocol.generate_header())
+        chat_rag_text_request.extend(int(502).to_bytes(4, 'big'))
+        chat_rag_text_request.extend((len(self.session_id)).to_bytes(4, 'big'))
+        chat_rag_text_request.extend(str.encode(self.session_id))
+        chat_rag_text_request.extend((len(payload_bytes)).to_bytes(4, 'big'))
+        chat_rag_text_request.extend(payload_bytes)
+        await self.ws.send(chat_rag_text_request)
 
     async def receive_server_response(self) -> Dict[str, Any]:
         try:
