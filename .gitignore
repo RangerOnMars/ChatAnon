@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Credentials
+train/credentials.py
+agent/credentials.py
+
