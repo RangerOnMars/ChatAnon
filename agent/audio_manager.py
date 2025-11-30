@@ -373,7 +373,6 @@ class DialogSession:
                 if not getattr(self, 'speaking', False):
                     processed_audio = b'\x00' * len(processed_audio)
 
-                save_input_pcm_to_wav(processed_audio, "input.pcm")
                 await self.client.task_request(processed_audio)
                 
                 # 每隔一段时间打印AEC统计信息
@@ -415,8 +414,6 @@ class DialogSession:
             await self.client.finish_connection()
             await asyncio.sleep(0.1)
             await self.client.close()
-            # print(f"dialog request logid: {self.client.logid}")
-            # save_output_to_file(self.audio_buffer, "output.pcm")
         except Exception as e:
             print(f"会话错误: {e}")
         finally:
@@ -424,22 +421,3 @@ class DialogSession:
                 self.audio_device.cleanup()
 
 
-def save_input_pcm_to_wav(pcm_data: bytes, filename: str) -> None:
-    """保存PCM数据为WAV文件"""
-    with wave.open(filename, 'wb') as wf:
-        wf.setnchannels(config.input_audio_config["channels"])
-        wf.setsampwidth(2)  # paInt16 = 2 bytes
-        wf.setframerate(config.input_audio_config["sample_rate"])
-        wf.writeframes(pcm_data)
-
-
-def save_output_to_file(audio_data: bytes, filename: str) -> None:
-    """保存原始PCM音频数据到文件"""
-    if not audio_data:
-        print("No audio data to save.")
-        return
-    try:
-        with open(filename, 'wb') as f:
-            f.write(audio_data)
-    except IOError as e:
-        print(f"Failed to save pcm file: {e}")
