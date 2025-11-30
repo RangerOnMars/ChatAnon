@@ -37,8 +37,8 @@ start_session_req = {
         },
         "extra": {
             "strict_audit": False,
-            "model": "SC"
-            # "audit_response": "支持客户自定义安全审核回复话术。"
+            "model": "SC",
+            "audit_response": "爱音酱听不懂这些啦，换个话题吧~"
         }
     }
 }
