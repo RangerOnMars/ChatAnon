@@ -11,13 +11,28 @@ from typing import Optional, Dict, Any
 
 import pyaudio
 import sys
-import termios
-import tty
-import select
+import platform
+
+if platform.system() != 'Windows':
+    import termios
+    import tty
+    import select
+else:
+    import msvcrt
 
 import config
+import logging
 from realtime_dialog_client import RealtimeDialogClient
 from aec import create_aec, AcousticEchoCanceller
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    # level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 @dataclass
@@ -183,6 +198,7 @@ class DialogSession:
                 return
             audio_data = response['payload_msg']
             if not self.is_audio_file_input:
+                logger.debug(f"收到音频数据包，大小: {len(audio_data)} 字节")
                 # Write audio data to output stream
                 self.audio_queue.put(audio_data)
             self.audio_buffer += audio_data
@@ -200,6 +216,9 @@ class DialogSession:
                         continue
                 self.is_user_querying = True
 
+            if event == 350:
+                logger.info("TTS生成开始")
+
             if event == 350 and self.is_sending_chat_tts_text and payload_msg.get("tts_type") in ["chat_tts_text", "external_rag"]:
                 while not self.audio_queue.empty():
                     try:
@@ -212,7 +231,8 @@ class DialogSession:
                     self.latest_asr_result = payload_msg.get("results")
             if event == 459:
                 self.is_user_querying = False
-                print("ASR结果:", self.latest_asr_result[0].get("text", ""))
+                logger.info("收到ASR结果:{}".format(self.latest_asr_result[0].get("text", "")))
+                # print("ASR结果:", self.latest_asr_result[0].get("text", ""))
                 # print(payload_msg)
                 # if random.randint(0, 100000)%1 == 0:
                 #     self.is_sending_chat_tts_text = True
@@ -220,7 +240,7 @@ class DialogSession:
                 #     asyncio.create_task(self.trigger_chat_rag_text())
             
         elif response['message_type'] == 'SERVER_ERROR':
-            print(f"服务器错误: {response['payload_msg']}")
+            logger.warning(f"服务器返回错误: {response}")
             raise Exception("服务器错误")
 
     async def trigger_chat_tts_text(self):
@@ -260,6 +280,22 @@ class DialogSession:
 
     def _keyboard_listener_thread(self):
         """在独立线程中监听标准输入的按键（非阻塞）；按空格切换说话/静音状态。"""
+        if platform.system() == 'Windows':
+            print("按空格键切换说话/静音（当前: 静音）")
+            try:
+                while getattr(self, 'is_running', True):
+                    if msvcrt.kbhit():
+                        ch = msvcrt.getch()
+                        if ch == b' ':
+                            # 切换说话状态
+                            self.speaking = not getattr(self, 'speaking', False)
+                            state = '允许说话' if self.speaking else '关闭说话（静音）'
+                            print(f"已切换: {state}")
+                    time.sleep(0.05)
+            except Exception as e:
+                print(f"键盘监听线程错误: {e}")
+            return
+
         fd = sys.stdin.fileno()
         try:
             old_settings = termios.tcgetattr(fd)

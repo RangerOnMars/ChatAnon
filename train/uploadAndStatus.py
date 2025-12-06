@@ -18,7 +18,7 @@ def train(appid, token, audio_path, spk_id):
     text = "喜欢少女乐队的小朋友你们好啊，我是吉他手千草爱音，关注邦多利，谢谢喵。\
             这是一段测试用的语音，爱音将阅读这一段对话，并生成音频，用于将语音模型和数据复制至火山引擎。"
     audios = [{"audio_bytes": encoded_data, "audio_format": audio_format, "text": text}]
-    data = {"appid": appid, "speaker_id": spk_id, "audios": audios, "source": 2, "language": 0,"model_type": 1}
+    data = {"appid": appid, "speaker_id": spk_id, "audios": audios, "source": 2, "language": 0,"model_type": 1, "enable_audio_denoise": True}
     # data = {"appid": appid, "speaker_id": spk_id, "audios": audios, "source": 2, "language": 0, "model_type": 0 }
     # 额外参数
     extra_params = {}
