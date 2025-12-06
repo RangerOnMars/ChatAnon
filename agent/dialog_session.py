@@ -48,6 +48,13 @@ class DialogSession:
         if self.is_audio_file_input:
             self.quit_event = asyncio.Event()
 
+        # 根据模式设置输入方式标记，防止服务端空闲超时
+        if self.mode == "text":
+            config.start_session_req["dialog"].setdefault("extra", {})["input_mod"] = "text"
+        else:
+            # 非文本模式移除标记，避免影响其他会话
+            config.start_session_req["dialog"].get("extra", {}).pop("input_mod", None)
+
         self.session_id = str(uuid.uuid4())
         self.client = RealtimeDialogClient(config=ws_config, session_id=self.session_id,
                                            output_audio_format=output_audio_format)
@@ -112,7 +119,7 @@ class DialogSession:
                 time.sleep(0.1)
 
     def handle_server_response(self, response: Dict[str, Any]) -> None:
-        if response == {}:
+        if response == {} or response['message_type'] is None:
             return
         """处理服务器响应"""
         if response['message_type'] == 'SERVER_ACK' and isinstance(response.get('payload_msg'), bytes):
@@ -314,6 +321,10 @@ class DialogSession:
         try:
             while True:
                 response = await self.client.receive_server_response()
+                # 跳过异常响应，避免因缺少字段导致崩溃
+                if not isinstance(response, dict) or 'message_type' not in response:
+                    print(f"收到异常响应: {response}")
+                    continue
                 self.handle_server_response(response)
                 if 'event' in response and (response['event'] == 152 or response['event'] == 153):
                     print(f"receive session finished event: {response['event']}")
